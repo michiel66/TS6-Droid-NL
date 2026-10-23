@@ -1,0 +1,29 @@
+TS6 DROID NEDERLANDS - ANDROID APK
+===================================
+
+Broncode: https://github.com/YUAXI/TS6_Droid_CN
+Licentie oorspronkelijke project: GNU GPLv3 (behoud auteur en licentie).
+
+DIT PAKKET IS DE VERTALING EN BOUWWORKFLOW, NIET DE APK.
+De APK wordt op GitHub Actions uit de originele broncode gebouwd.
+
+AAN DE SLAG
+1. Maak op GitHub een nieuwe LEGE repository, bijvoorbeeld TS6-Droid-NL.
+2. Pak dit ZIP-bestand uit. Upload de map '.github' en de map 'scripts'
+   met behoud van het mappenpad naar die nieuwe repository.
+   Upload eventueel deze LEESMIJ-NL.txt mee.
+3. Open je repository, ga naar Actions.
+4. Klik 'Bouw TS6 Droid Nederlands' en daarna 'Run workflow'.
+5. Wacht tot de workflow een groen vinkje heeft.
+6. Open de build en download onder 'Artifacts': TS6-Droid-Nederlands-APK.
+7. Pak die ZIP uit en installeer TS6-Droid-NL.apk op een Android-telefoon.
+
+Let op:
+- De APK gebruikt een debug-ondertekening, geschikt voor testen en niet voor
+  een officiële publieke productie-release.
+- De applicatie heeft Android 10 of nieuwer en ARM64 nodig.
+- De oorspronkelijke TeamSpeak / Rust-functionaliteit is niet herschreven.
+- De ingebouwde updater verwijst nog naar de oorspronkelijke Chinese release;
+  gebruik die APK NIET als update voor de Nederlandse pakketnaam.
+- Als de originele broncode verandert, kan de taalpatch aanpassingen nodig hebben.
+- Credits en GPLv3 van Grégory D, yuaxi en andere bijdragers blijven gelden.
