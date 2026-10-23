@@ -1,0 +1,65 @@
+
+name: Bouw TS6 Droid Nederlands
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/maak_nederlands.py"
+      - ".github/workflows/ts6-nederlands.yml"
+
+jobs:
+  apk:
+    name: Nederlandse Android APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download originele broncode
+        uses: actions/checkout@v4
+        with:
+          repository: YUAXI/TS6_Droid_CN
+          ref: main
+          path: upstream
+
+      - name: Download Nederlandse vertaling
+        uses: actions/checkout@v4
+        with:
+          path: dutch-files
+
+      - name: Nederlands toepassen
+        run: |
+          mkdir -p upstream/scripts
+          cp dutch-files/scripts/maak_nederlands.py upstream/scripts/maak_nederlands.py
+          cd upstream
+          python3 scripts/maak_nederlands.py
+
+      - name: JDK 17 installeren
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle instellen
+        working-directory: upstream
+        run: chmod +x gradlew
+
+      - name: Tests uitvoeren
+        working-directory: upstream
+        run: ./gradlew --no-daemon testDebugUnitTest -x buildRustLibs
+
+      - name: Nederlandse APK bouwen
+        working-directory: upstream
+        run: ./gradlew --no-daemon assembleDebug -x buildRustLibs
+
+      - name: APK hernoemen
+        run: |
+          cp upstream/app/build/outputs/apk/debug/app-debug.apk TS6-Droid-NL.apk
+
+      - name: APK beschikbaar maken
+        uses: actions/upload-artifact@v4
+        with:
+          name: TS6-Droid-Nederlands-APK
+          path: TS6-Droid-NL.apk
+          retention-days: 30
