@@ -1,0 +1,35 @@
+TS6 DROID NL - EEN APK VOOR 32-BIT EN 64-BIT ANDROID
+
+Dit pakket past de bestaande TS6 Droid NL-app aan. Het is geen nieuwe
+PTT Connect-app, en verandert niet het uiterlijk of de TeamSpeak-engine.
+
+GITHUB: https://github.com/michiel66/TS6-Droid-NL
+
+1. Open de repository.
+2. Upload scripts/maak_32_64_bit.py. Laat maak_nederlands.py staan.
+3. Open het bestaande bestand .github/workflows/ts6-nederlands.yml.
+4. Klik op potloodje (bewerken) en vervang de VOLLEDIGE inhoud
+   door die uit dit bouwpakket. Commit changes.
+5. Ga naar Actions > Bouw TS6 Droid NL 32-bit en 64-bit > Run workflow.
+6. Als groen: open de run, en download artifact
+   TS6-Droid-NL-32bit-64bit-APK. Pak dit ZIP-artifact uit.
+7. Installeer de APK op de TeloX TE620 om te testen.
+
+TECHNISCH
+- Basis: YUAXI/TS6_Droid_CN, vastgepind op 56d3b4d1991...
+- Native: wslinnn/tslib_multi, vastgepind op 8e0bc1150...
+- Patchvolgorde: whisper-groups, vervolgens away-status.
+- Bestaande 64-bit libtslib_jni.so blijft aanwezig.
+- Een verse 32-bit armeabi-v7a libtslib_jni.so wordt gebouwd met NDK.
+- Beide library-bestanden moeten aantoonbaar in de APK zitten.
+- Android 10 voldoet aan de minimum Android-versie.
+- 32-bit compatibiliteit en werkende zijknop zijn nog NIET op de TE620 getest.
+
+LET OP BIJ HERINSTALLATIE
+De debug-APK kan anders ondertekend zijn dan jouw vorige APK.
+Installeer de nieuwe build niet over de werkende Samsung-installatie
+zonder eerst identiteit en relevante gegevens veilig te exporteren.
+Test eerst op de TeloX, waarop de app momenteel niet geïnstalleerd is.
+
+Als GitHub Actions rood wordt: stuur de tekst van de eerste foutmelding.
+Er is nog geen succesvol gebouwde of getest APK van dit pakket.
