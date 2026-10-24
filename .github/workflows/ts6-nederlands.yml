@@ -38,26 +38,42 @@ jobs:
           ref: 8e0bc1150b548f31e0cc859ae8b9d488bd355038
           path: tslib
 
-      - name: Nederlandse taal en 32-64-bit instellen
+      - name: Nederlandse taal instellen
         shell: bash
         run: |
           set -euo pipefail
+
           mkdir -p upstream/scripts
-          cp dutch-files/scripts/maak_nederlands.py upstream/scripts/
-          cp dutch-files/scripts/maak_32_64_bit.py upstream/scripts/
+
+          cp dutch-files/scripts/maak_nederlands.py \
+            upstream/scripts/
+
+          cp dutch-files/scripts/maak_32_64_bit.py \
+            upstream/scripts/
+
           cd upstream
+
           python3 scripts/maak_nederlands.py
           python3 scripts/maak_32_64_bit.py
 
-      - name: TeamSpeak functies toepassen
+      - name: TeamSpeak patches toepassen
         shell: bash
         run: |
           set -euo pipefail
+
           cd tslib
-          git apply --check ../upstream/patches/tslib_multi-8e0bc11-whisper-groups.patch
-          git apply ../upstream/patches/tslib_multi-8e0bc11-whisper-groups.patch
-          git apply --check ../upstream/patches/tslib_multi-8e0bc11-away-status.patch
-          git apply ../upstream/patches/tslib_multi-8e0bc11-away-status.patch
+
+          git apply --check \
+            ../upstream/patches/tslib_multi-8e0bc11-whisper-groups.patch
+
+          git apply \
+            ../upstream/patches/tslib_multi-8e0bc11-whisper-groups.patch
+
+          git apply --check \
+            ../upstream/patches/tslib_multi-8e0bc11-away-status.patch
+
+          git apply \
+            ../upstream/patches/tslib_multi-8e0bc11-away-status.patch
 
       - name: Java 17 installeren
         uses: actions/setup-java@v4
@@ -65,41 +81,51 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Android SDK installeren
-        uses: android-actions/setup-android@v3
+      # GitHub Ubuntu heeft al een Android SDK.
+      # De defecte setup-android stap is verwijderd.
 
       - name: Android NDK installeren
         shell: bash
         run: |
           set -euo pipefail
+
+          echo "Android SDK: $ANDROID_HOME"
+
           sdkmanager --install \
             "platforms;android-35" \
             "build-tools;35.0.0" \
             "ndk;27.2.12479018"
 
-          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          NDK_PATH="$ANDROID_HOME/ndk/27.2.12479018"
+
+          test -d "$NDK_PATH"
+
+          echo "ANDROID_NDK_HOME=$NDK_PATH" >> "$GITHUB_ENV"
 
       - name: Rust 32-bit installeren
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: armv7-linux-androideabi
 
-      - name: Rust cache
+      - name: Rust cache instellen
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: tslib
 
       - name: Cargo NDK installeren
-        run: cargo install cargo-ndk --locked
+        shell: bash
+        run: |
+          cargo install cargo-ndk --locked
 
-      - name: Bouw TeamSpeak 32-bit bibliotheek
+      - name: TeamSpeak 32-bit bibliotheek bouwen
         shell: bash
         working-directory: tslib
         env:
           CMAKE_POLICY_VERSION_MINIMUM: "3.5"
         run: |
           set -euo pipefail
-          export ANDROID_NDK="${ANDROID_NDK_HOME}"
+
+          export ANDROID_NDK="$ANDROID_NDK_HOME"
 
           cargo ndk --platform 29 \
             -t armeabi-v7a \
@@ -109,49 +135,67 @@ jobs:
             --features vendored-openssl \
             -j2
 
-      - name: Controleer 32-bit en 64-bit bestanden
+      - name: Beide TeamSpeak bibliotheken controleren
         shell: bash
         run: |
           set -euo pipefail
 
           for abi in armeabi-v7a arm64-v8a; do
-            f="upstream/app/src/main/jniLibs/$abi/libtslib_jni.so"
 
-            if [ ! -s "$f" ]; then
-              echo "::error::TeamSpeak bibliotheek ontbreekt voor $abi"
+            LIB="upstream/app/src/main/jniLibs/$abi/libtslib_jni.so"
+
+            if [ ! -s "$LIB" ]; then
+              echo "::error::Bibliotheek ontbreekt: $abi"
               exit 1
             fi
 
-            file "$f"
+            file "$LIB"
+
           done
 
       - name: Gradle cache instellen
         uses: gradle/actions/setup-gradle@v4
 
       - name: Android tests uitvoeren
+        shell: bash
         working-directory: upstream
         run: |
+          set -euo pipefail
+
           chmod +x gradlew
-          ./gradlew --no-daemon testDebugUnitTest -x buildRustLibs
 
-      - name: Nederlandse APK bouwen
+          ./gradlew --no-daemon \
+            testDebugUnitTest \
+            -x buildRustLibs
+
+      - name: Nederlandse Android APK bouwen
+        shell: bash
         working-directory: upstream
         run: |
-          ./gradlew --no-daemon assembleDebug -x buildRustLibs
+          set -euo pipefail
 
-      - name: Controleer APK architecturen
+          ./gradlew --no-daemon \
+            assembleDebug \
+            -x buildRustLibs
+
+      - name: APK controleren
         shell: bash
         run: |
           set -euo pipefail
 
           APK="upstream/app/build/outputs/apk/debug/app-debug.apk"
 
+          test -s "$APK"
+
           for abi in armeabi-v7a arm64-v8a; do
-            unzip -Z1 "$APK" | grep -Fx "lib/$abi/libtslib_jni.so" \
+
+            unzip -Z1 "$APK" \
+              | grep -Fx "lib/$abi/libtslib_jni.so" \
               || {
-                echo "::error::APK mist $abi"
+                echo "::error::APK mist architectuur: $abi"
                 exit 1
               }
+
           done
 
           cp "$APK" TS6-Droid-NL-32bit-64bit.apk
