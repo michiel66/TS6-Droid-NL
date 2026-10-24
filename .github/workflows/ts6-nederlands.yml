@@ -38,7 +38,7 @@ jobs:
           ref: 8e0bc1150b548f31e0cc859ae8b9d488bd355038
           path: tslib
 
-      - name: Nederlandse taal instellen
+      - name: Nederlandse taal en architecturen instellen
         shell: bash
         run: |
           set -euo pipefail
@@ -81,24 +81,41 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # GitHub Ubuntu heeft al een Android SDK.
-      # De defecte setup-android stap is verwijderd.
-
-      - name: Android NDK installeren
+      - name: Android SDK en NDK installeren
         shell: bash
         run: |
           set -euo pipefail
 
           echo "Android SDK: $ANDROID_HOME"
 
-          sdkmanager --install \
+          SDK_MANAGER="$(
+            find "$ANDROID_HOME/cmdline-tools" \
+              -type f \
+              -name sdkmanager \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          if [ -z "$SDK_MANAGER" ]; then
+            echo "::error::sdkmanager niet gevonden"
+            exit 1
+          fi
+
+          echo "SDK Manager: $SDK_MANAGER"
+
+          "$SDK_MANAGER" \
+            --sdk_root="$ANDROID_HOME" \
+            --install \
             "platforms;android-35" \
             "build-tools;35.0.0" \
             "ndk;27.2.12479018"
 
           NDK_PATH="$ANDROID_HOME/ndk/27.2.12479018"
 
-          test -d "$NDK_PATH"
+          if [ ! -d "$NDK_PATH" ]; then
+            echo "::error::Android NDK ontbreekt"
+            exit 1
+          fi
 
           echo "ANDROID_NDK_HOME=$NDK_PATH" >> "$GITHUB_ENV"
 
@@ -115,6 +132,8 @@ jobs:
       - name: Cargo NDK installeren
         shell: bash
         run: |
+          set -euo pipefail
+
           cargo install cargo-ndk --locked
 
       - name: TeamSpeak 32-bit bibliotheek bouwen
@@ -135,23 +154,24 @@ jobs:
             --features vendored-openssl \
             -j2
 
-      - name: Beide TeamSpeak bibliotheken controleren
+      - name: TeamSpeak bibliotheken controleren
         shell: bash
         run: |
           set -euo pipefail
 
-          for abi in armeabi-v7a arm64-v8a; do
+          LIB32="upstream/app/src/main/jniLibs/armeabi-v7a/libtslib_jni.so"
+          LIB64="upstream/app/src/main/jniLibs/arm64-v8a/libtslib_jni.so"
 
-            LIB="upstream/app/src/main/jniLibs/$abi/libtslib_jni.so"
+          test -s "$LIB32"
+          test -s "$LIB64"
 
-            if [ ! -s "$LIB" ]; then
-              echo "::error::Bibliotheek ontbreekt: $abi"
-              exit 1
-            fi
+          file "$LIB32"
+          file "$LIB64"
 
-            file "$LIB"
+          readelf -h "$LIB32" | grep -q "ELF32"
+          readelf -h "$LIB64" | grep -q "ELF64"
 
-          done
+          echo "32-bit en 64-bit bibliotheken aanwezig"
 
       - name: Gradle cache instellen
         uses: gradle/actions/setup-gradle@v4
@@ -168,7 +188,7 @@ jobs:
             testDebugUnitTest \
             -x buildRustLibs
 
-      - name: Nederlandse Android APK bouwen
+      - name: Nederlandse APK bouwen
         shell: bash
         working-directory: upstream
         run: |
@@ -178,7 +198,7 @@ jobs:
             assembleDebug \
             -x buildRustLibs
 
-      - name: APK controleren
+      - name: APK controleren en hernoemen
         shell: bash
         run: |
           set -euo pipefail
@@ -188,14 +208,12 @@ jobs:
           test -s "$APK"
 
           for abi in armeabi-v7a arm64-v8a; do
-
             unzip -Z1 "$APK" \
               | grep -Fx "lib/$abi/libtslib_jni.so" \
               || {
-                echo "::error::APK mist architectuur: $abi"
+                echo "::error::APK mist $abi"
                 exit 1
               }
-
           done
 
           cp "$APK" TS6-Droid-NL-32bit-64bit.apk
