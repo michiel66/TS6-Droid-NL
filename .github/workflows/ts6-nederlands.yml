@@ -1,65 +1,170 @@
 
-name: Bouw TS6 Droid Nederlands
+name: Bouw TS6 Droid NL 32-bit en 64-bit
 
 on:
   workflow_dispatch:
   push:
     paths:
       - "scripts/maak_nederlands.py"
+      - "scripts/maak_32_64_bit.py"
       - ".github/workflows/ts6-nederlands.yml"
+
+permissions:
+  contents: read
 
 jobs:
   apk:
-    name: Nederlandse Android APK
+    name: Android APK 32-bit en 64-bit
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    timeout-minutes: 120
 
     steps:
-      - name: Download originele broncode
-        uses: actions/checkout@v4
-        with:
-          repository: YUAXI/TS6_Droid_CN
-          ref: main
-          path: upstream
-
-      - name: Download Nederlandse vertaling
+      - name: Nederlandse bestanden downloaden
         uses: actions/checkout@v4
         with:
           path: dutch-files
 
-      - name: Nederlands toepassen
+      - name: Originele TS6 Droid downloaden
+        uses: actions/checkout@v4
+        with:
+          repository: YUAXI/TS6_Droid_CN
+          ref: 56d3b4d1991a4c565b1f75f419f4563e772f9614
+          path: upstream
+
+      - name: TeamSpeak Rust broncode downloaden
+        uses: actions/checkout@v4
+        with:
+          repository: wslinnn/tslib_multi
+          ref: 8e0bc1150b548f31e0cc859ae8b9d488bd355038
+          path: tslib
+
+      - name: Nederlandse taal en 32-64-bit instellen
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p upstream/scripts
-          cp dutch-files/scripts/maak_nederlands.py upstream/scripts/maak_nederlands.py
+          cp dutch-files/scripts/maak_nederlands.py upstream/scripts/
+          cp dutch-files/scripts/maak_32_64_bit.py upstream/scripts/
           cd upstream
           python3 scripts/maak_nederlands.py
+          python3 scripts/maak_32_64_bit.py
 
-      - name: JDK 17 installeren
+      - name: TeamSpeak functies toepassen
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tslib
+          git apply --check ../upstream/patches/tslib_multi-8e0bc11-whisper-groups.patch
+          git apply ../upstream/patches/tslib_multi-8e0bc11-whisper-groups.patch
+          git apply --check ../upstream/patches/tslib_multi-8e0bc11-away-status.patch
+          git apply ../upstream/patches/tslib_multi-8e0bc11-away-status.patch
+
+      - name: Java 17 installeren
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Gradle instellen
-        working-directory: upstream
-        run: chmod +x gradlew
+      - name: Android SDK installeren
+        uses: android-actions/setup-android@v3
 
-      - name: Tests uitvoeren
+      - name: Android NDK installeren
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --install \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.2.12479018"
+
+          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/27.2.12479018" >> "$GITHUB_ENV"
+
+      - name: Rust 32-bit installeren
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-linux-androideabi
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tslib
+
+      - name: Cargo NDK installeren
+        run: cargo install cargo-ndk --locked
+
+      - name: Bouw TeamSpeak 32-bit bibliotheek
+        shell: bash
+        working-directory: tslib
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+        run: |
+          set -euo pipefail
+          export ANDROID_NDK="${ANDROID_NDK_HOME}"
+
+          cargo ndk --platform 29 \
+            -t armeabi-v7a \
+            -o ../upstream/app/src/main/jniLibs \
+            build --release \
+            -p tslib-jni \
+            --features vendored-openssl \
+            -j2
+
+      - name: Controleer 32-bit en 64-bit bestanden
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for abi in armeabi-v7a arm64-v8a; do
+            f="upstream/app/src/main/jniLibs/$abi/libtslib_jni.so"
+
+            if [ ! -s "$f" ]; then
+              echo "::error::TeamSpeak bibliotheek ontbreekt voor $abi"
+              exit 1
+            fi
+
+            file "$f"
+          done
+
+      - name: Gradle cache instellen
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Android tests uitvoeren
         working-directory: upstream
-        run: ./gradlew --no-daemon testDebugUnitTest -x buildRustLibs
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testDebugUnitTest -x buildRustLibs
 
       - name: Nederlandse APK bouwen
         working-directory: upstream
-        run: ./gradlew --no-daemon assembleDebug -x buildRustLibs
-
-      - name: APK hernoemen
         run: |
-          cp upstream/app/build/outputs/apk/debug/app-debug.apk TS6-Droid-NL.apk
+          ./gradlew --no-daemon assembleDebug -x buildRustLibs
+
+      - name: Controleer APK architecturen
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APK="upstream/app/build/outputs/apk/debug/app-debug.apk"
+
+          for abi in armeabi-v7a arm64-v8a; do
+            unzip -Z1 "$APK" | grep -Fx "lib/$abi/libtslib_jni.so" \
+              || {
+                echo "::error::APK mist $abi"
+                exit 1
+              }
+          done
+
+          cp "$APK" TS6-Droid-NL-32bit-64bit.apk
+
+          sha256sum TS6-Droid-NL-32bit-64bit.apk \
+            > TS6-Droid-NL-32bit-64bit.apk.sha256
 
       - name: APK beschikbaar maken
         uses: actions/upload-artifact@v4
         with:
-          name: TS6-Droid-Nederlands-APK
-          path: TS6-Droid-NL.apk
+          name: TS6-Droid-NL-32bit-64bit-APK
+          path: |
+            TS6-Droid-NL-32bit-64bit.apk
+            TS6-Droid-NL-32bit-64bit.apk.sha256
+          if-no-files-found: error
           retention-days: 30
