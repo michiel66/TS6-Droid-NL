@@ -1,5 +1,5 @@
 
-name: Bouw TS6 Droid NL met PTT Connect Audio en 3-Tonige Rogerpiep
+name: Bouw TS6 Droid NL met Verbeterd Volume en Rogerpiep
 
 on:
   workflow_dispatch:
@@ -10,6 +10,7 @@ on:
       - "maak_ptt_zijknop.py"
       - "maak_rogerpiep.py"
       - "maak_audio_pttconnect_3toon.py"
+      - "maak_volume_media.py"
       - ".github/workflows/ts6-nederlands.yml"
 
 permissions:
@@ -17,7 +18,7 @@ permissions:
 
 jobs:
   apk:
-    name: TS6 Droid NL 32-bit 64-bit met 3-tonige Rogerpiep
+    name: TS6 Droid NL 32-bit 64-bit Volume PTT Rogerpiep
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
@@ -41,7 +42,7 @@ jobs:
           ref: 8e0bc1150b548f31e0cc859ae8b9d488bd355038
           path: tslib
 
-      - name: Nederlands PTT Rogerpiep en audio toepassen
+      - name: Nederlands PTT Rogerpiep en Volume toepassen
         shell: bash
         run: |
           set -euo pipefail
@@ -63,6 +64,9 @@ jobs:
           cp dutch-files/maak_audio_pttconnect_3toon.py \
             upstream/scripts/
 
+          cp dutch-files/maak_volume_media.py \
+            upstream/scripts/
+
           cd upstream
 
           echo "Stap 1: Nederlands instellen"
@@ -71,14 +75,17 @@ jobs:
           echo "Stap 2: 32-bit en 64-bit instellen"
           python3 scripts/maak_32_64_bit.py
 
-          echo "Stap 3: PTT op scherm en fysieke zijknop"
+          echo "Stap 3: PTT-zijknop en schermknop"
           python3 scripts/maak_ptt_zijknop.py
 
           echo "Stap 4: Rogerpiep met aan-uit schakelaar"
           python3 scripts/maak_rogerpiep.py
 
-          echo "Stap 5: PTT Connect audio en 3-tonige rogerpiep"
+          echo "Stap 5: Kraakvrije audio en 3-tonige rogerpiep"
           python3 scripts/maak_audio_pttconnect_3toon.py
+
+          echo "Stap 6: Luidsprekervolume corrigeren"
+          python3 scripts/maak_volume_media.py
 
       - name: TeamSpeak patches toepassen
         shell: bash
@@ -177,7 +184,7 @@ jobs:
             --features vendored-openssl \
             -j2
 
-      - name: TeamSpeak 32-bit en 64-bit controleren
+      - name: TeamSpeak bibliotheken controleren
         shell: bash
         run: |
           set -euo pipefail
@@ -211,7 +218,7 @@ jobs:
             testDebugUnitTest \
             -x buildRustLibs
 
-      - name: APK met verbeterde audio bouwen
+      - name: APK met verbeterd volume bouwen
         shell: bash
         working-directory: upstream
         run: |
@@ -240,18 +247,18 @@ jobs:
           done
 
           cp "$APK" \
-            TS6-Droid-NL-3tonige-Rogerpiep-32bit-64bit.apk
+            TS6-Droid-NL-Volume-PTT-Rogerpiep-32bit-64bit.apk
 
           sha256sum \
-            TS6-Droid-NL-3tonige-Rogerpiep-32bit-64bit.apk \
-            > TS6-Droid-NL-3tonige-Rogerpiep-32bit-64bit.apk.sha256
+            TS6-Droid-NL-Volume-PTT-Rogerpiep-32bit-64bit.apk \
+            > TS6-Droid-NL-Volume-PTT-Rogerpiep-32bit-64bit.apk.sha256
 
       - name: Nieuwe APK beschikbaar maken
         uses: actions/upload-artifact@v4
         with:
-          name: TS6-Droid-NL-3tonige-Rogerpiep-32bit-64bit-APK
+          name: TS6-Droid-NL-Volume-PTT-Rogerpiep-32bit-64bit-APK
           path: |
-            TS6-Droid-NL-3tonige-Rogerpiep-32bit-64bit.apk
-            TS6-Droid-NL-3tonige-Rogerpiep-32bit-64bit.apk.sha256
+            TS6-Droid-NL-Volume-PTT-Rogerpiep-32bit-64bit.apk
+            TS6-Droid-NL-Volume-PTT-Rogerpiep-32bit-64bit.apk.sha256
           if-no-files-found: error
           retention-days: 30
