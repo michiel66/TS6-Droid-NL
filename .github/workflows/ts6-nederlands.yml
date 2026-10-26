@@ -1,5 +1,5 @@
 
-name: Bouw TS6 Droid NL 32-bit en 64-bit
+name: Bouw TS6 Droid NL met PTT zijknop
 
 on:
   workflow_dispatch:
@@ -7,6 +7,7 @@ on:
     paths:
       - "scripts/maak_nederlands.py"
       - "scripts/maak_32_64_bit.py"
+      - "maak_ptt_zijknop.py"
       - ".github/workflows/ts6-nederlands.yml"
 
 permissions:
@@ -14,7 +15,7 @@ permissions:
 
 jobs:
   apk:
-    name: Android APK 32-bit en 64-bit
+    name: TS6 Droid NL 32-bit 64-bit PTT
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
@@ -38,7 +39,7 @@ jobs:
           ref: 8e0bc1150b548f31e0cc859ae8b9d488bd355038
           path: tslib
 
-      - name: Nederlandse taal en architecturen instellen
+      - name: Nederlandse taal 32-bit 64-bit en PTT instellen
         shell: bash
         run: |
           set -euo pipefail
@@ -51,10 +52,19 @@ jobs:
           cp dutch-files/scripts/maak_32_64_bit.py \
             upstream/scripts/
 
+          cp dutch-files/maak_ptt_zijknop.py \
+            upstream/scripts/
+
           cd upstream
 
+          echo "Nederlandse taal toepassen"
           python3 scripts/maak_nederlands.py
+
+          echo "32-bit en 64-bit toepassen"
           python3 scripts/maak_32_64_bit.py
+
+          echo "Fysieke PTT en scherm-PTT toepassen"
+          python3 scripts/maak_ptt_zijknop.py
 
       - name: TeamSpeak patches toepassen
         shell: bash
@@ -101,8 +111,6 @@ jobs:
             exit 1
           fi
 
-          echo "SDK Manager: $SDK_MANAGER"
-
           "$SDK_MANAGER" \
             --sdk_root="$ANDROID_HOME" \
             --install \
@@ -133,7 +141,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cargo install cargo-ndk --locked
 
       - name: TeamSpeak 32-bit bibliotheek bouwen
@@ -188,7 +195,7 @@ jobs:
             testDebugUnitTest \
             -x buildRustLibs
 
-      - name: Nederlandse APK bouwen
+      - name: Nieuwe PTT APK bouwen
         shell: bash
         working-directory: upstream
         run: |
@@ -198,7 +205,7 @@ jobs:
             assembleDebug \
             -x buildRustLibs
 
-      - name: APK controleren en hernoemen
+      - name: APK controleren
         shell: bash
         run: |
           set -euo pipefail
@@ -208,25 +215,27 @@ jobs:
           test -s "$APK"
 
           for abi in armeabi-v7a arm64-v8a; do
+
             unzip -Z1 "$APK" \
               | grep -Fx "lib/$abi/libtslib_jni.so" \
               || {
                 echo "::error::APK mist $abi"
                 exit 1
               }
+
           done
 
-          cp "$APK" TS6-Droid-NL-32bit-64bit.apk
+          cp "$APK" TS6-Droid-NL-PTT-32bit-64bit.apk
 
-          sha256sum TS6-Droid-NL-32bit-64bit.apk \
-            > TS6-Droid-NL-32bit-64bit.apk.sha256
+          sha256sum TS6-Droid-NL-PTT-32bit-64bit.apk \
+            > TS6-Droid-NL-PTT-32bit-64bit.apk.sha256
 
-      - name: APK beschikbaar maken
+      - name: Nieuwe APK beschikbaar maken
         uses: actions/upload-artifact@v4
         with:
-          name: TS6-Droid-NL-32bit-64bit-APK
+          name: TS6-Droid-NL-PTT-32bit-64bit-APK
           path: |
-            TS6-Droid-NL-32bit-64bit.apk
-            TS6-Droid-NL-32bit-64bit.apk.sha256
+            TS6-Droid-NL-PTT-32bit-64bit.apk
+            TS6-Droid-NL-PTT-32bit-64bit.apk.sha256
           if-no-files-found: error
           retention-days: 30
