@@ -1,5 +1,5 @@
 
-name: Bouw TS6 Droid NL met PTT zijknop
+name: Bouw TS6 Droid NL met PTT en Rogerpiep
 
 on:
   workflow_dispatch:
@@ -8,6 +8,7 @@ on:
       - "scripts/maak_nederlands.py"
       - "scripts/maak_32_64_bit.py"
       - "maak_ptt_zijknop.py"
+      - "maak_rogerpiep.py"
       - ".github/workflows/ts6-nederlands.yml"
 
 permissions:
@@ -15,7 +16,7 @@ permissions:
 
 jobs:
   apk:
-    name: TS6 Droid NL 32-bit 64-bit PTT
+    name: TS6 Droid NL 32-bit 64-bit PTT Rogerpiep
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
@@ -39,7 +40,7 @@ jobs:
           ref: 8e0bc1150b548f31e0cc859ae8b9d488bd355038
           path: tslib
 
-      - name: Nederlandse taal 32-bit 64-bit en PTT instellen
+      - name: Nederlandse taal PTT en Rogerpiep instellen
         shell: bash
         run: |
           set -euo pipefail
@@ -55,6 +56,9 @@ jobs:
           cp dutch-files/maak_ptt_zijknop.py \
             upstream/scripts/
 
+          cp dutch-files/maak_rogerpiep.py \
+            upstream/scripts/
+
           cd upstream
 
           echo "Nederlandse taal toepassen"
@@ -63,8 +67,11 @@ jobs:
           echo "32-bit en 64-bit toepassen"
           python3 scripts/maak_32_64_bit.py
 
-          echo "Fysieke PTT en scherm-PTT toepassen"
+          echo "PTT-zijknop en schermknop toepassen"
           python3 scripts/maak_ptt_zijknop.py
+
+          echo "Rogerpiep toevoegen"
+          python3 scripts/maak_rogerpiep.py
 
       - name: TeamSpeak patches toepassen
         shell: bash
@@ -195,7 +202,7 @@ jobs:
             testDebugUnitTest \
             -x buildRustLibs
 
-      - name: Nieuwe PTT APK bouwen
+      - name: APK met Rogerpiep bouwen
         shell: bash
         working-directory: upstream
         run: |
@@ -225,17 +232,17 @@ jobs:
 
           done
 
-          cp "$APK" TS6-Droid-NL-PTT-32bit-64bit.apk
+          cp "$APK" TS6-Droid-NL-Rogerpiep-32bit-64bit.apk
 
-          sha256sum TS6-Droid-NL-PTT-32bit-64bit.apk \
-            > TS6-Droid-NL-PTT-32bit-64bit.apk.sha256
+          sha256sum TS6-Droid-NL-Rogerpiep-32bit-64bit.apk \
+            > TS6-Droid-NL-Rogerpiep-32bit-64bit.apk.sha256
 
       - name: Nieuwe APK beschikbaar maken
         uses: actions/upload-artifact@v4
         with:
-          name: TS6-Droid-NL-PTT-32bit-64bit-APK
+          name: TS6-Droid-NL-Rogerpiep-32bit-64bit-APK
           path: |
-            TS6-Droid-NL-PTT-32bit-64bit.apk
-            TS6-Droid-NL-PTT-32bit-64bit.apk.sha256
+            TS6-Droid-NL-Rogerpiep-32bit-64bit.apk
+            TS6-Droid-NL-Rogerpiep-32bit-64bit.apk.sha256
           if-no-files-found: error
           retention-days: 30
